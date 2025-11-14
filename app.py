@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_cors import CORS
 from config import Config
-from models import db
+from models.db import db
 from routes.auth_routes import auth_bp
 from routes.learning_routes import learning_bp
 import os

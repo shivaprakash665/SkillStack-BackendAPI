@@ -1,4 +1,4 @@
-from .. import db
+from models.db import db
 from datetime import datetime
 
 class Certificate(db.Model):

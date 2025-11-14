@@ -1,15 +1,15 @@
 from flask import request, jsonify
 from models.learning_goal import LearningGoal
 from models.session import Session
+from models.study_log import StudyLog
 from models import db
-from middleware.auth_middleware import token_required
-from datetime import datetime
+from datetime import datetime, date, timedelta
+from sqlalchemy import func
 
 class LearningGoalController:
     
     @staticmethod
-    @token_required
-    def create_learning_goal(current_user):
+    def create_learning_goal(user_id):
         try:
             data = request.get_json()
             
@@ -26,7 +26,7 @@ class LearningGoalController:
                 expected_end_date = datetime.fromisoformat(data['expected_end_date'].replace('Z', '+00:00'))
             
             learning_goal = LearningGoal(
-                user_id=current_user.id,
+                user_id=user_id,
                 title=data['title'],
                 description=data.get('description'),
                 resource_type=data['resource_type'],
@@ -51,10 +51,9 @@ class LearningGoalController:
             return jsonify({'error': str(e)}), 500
     
     @staticmethod
-    @token_required
-    def get_learning_goals(current_user):
+    def get_learning_goals(user_id):
         try:
-            goals = LearningGoal.query.filter_by(user_id=current_user.id).all()
+            goals = LearningGoal.query.filter_by(user_id=user_id).all()
             return jsonify({
                 'learning_goals': [goal.to_dict() for goal in goals]
             }), 200
@@ -62,10 +61,9 @@ class LearningGoalController:
             return jsonify({'error': str(e)}), 500
     
     @staticmethod
-    @token_required
-    def get_learning_goal(current_user, goal_id):
+    def get_learning_goal(user_id, goal_id):
         try:
-            goal = LearningGoal.query.filter_by(id=goal_id, user_id=current_user.id).first()
+            goal = LearningGoal.query.filter_by(id=goal_id, user_id=user_id).first()
             if not goal:
                 return jsonify({'error': 'Learning goal not found'}), 404
             
@@ -76,55 +74,58 @@ class LearningGoalController:
             return jsonify({'error': str(e)}), 500
     
     @staticmethod
-    @token_required
-    def update_learning_goal(current_user, goal_id):
+    def get_study_analytics(user_id):
         try:
-            goal = LearningGoal.query.filter_by(id=goal_id, user_id=current_user.id).first()
-            if not goal:
-                return jsonify({'error': 'Learning goal not found'}), 404
+            # Daily study time for last 7 days
+            end_date = date.today()
+            start_date = end_date - timedelta(days=6)
             
-            data = request.get_json()
+            daily_study = db.session.query(
+                StudyLog.date,
+                func.sum(StudyLog.hours_studied).label('total_hours')
+            ).filter(
+                StudyLog.user_id == user_id,
+                StudyLog.date >= start_date,
+                StudyLog.date <= end_date
+            ).group_by(StudyLog.date).all()
             
-            # Update fields
-            if 'title' in data:
-                goal.title = data['title']
-            if 'description' in data:
-                goal.description = data['description']
-            if 'status' in data:
-                goal.status = data['status']
-                if data['status'] == 'completed':
-                    goal.actual_end_date = datetime.utcnow()
-            if 'difficulty_rating' in data:
-                goal.difficulty_rating = data['difficulty_rating']
-            if 'total_hours' in data:
-                goal.total_hours = data['total_hours']
-            if 'category' in data:
-                goal.category = data['category']
+            # Weekly average
+            weekly_avg = db.session.query(
+                func.avg(StudyLog.hours_studied)
+            ).filter(
+                StudyLog.user_id == user_id,
+                StudyLog.date >= start_date
+            ).scalar() or 0
             
-            goal.updated_at = datetime.utcnow()
-            db.session.commit()
+            # Category breakdown
+            category_breakdown = db.session.query(
+                LearningGoal.category,
+                func.sum(StudyLog.hours_studied).label('total_hours')
+            ).join(StudyLog, StudyLog.learning_goal_id == LearningGoal.id).filter(
+                StudyLog.user_id == user_id
+            ).group_by(LearningGoal.category).all()
+            
+            # Goal progress
+            goals_progress = LearningGoal.query.filter_by(user_id=user_id).all()
             
             return jsonify({
-                'message': 'Learning goal updated successfully',
-                'learning_goal': goal.to_dict()
-            }), 200
-            
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-    
-    @staticmethod
-    @token_required
-    def delete_learning_goal(current_user, goal_id):
-        try:
-            goal = LearningGoal.query.filter_by(id=goal_id, user_id=current_user.id).first()
-            if not goal:
-                return jsonify({'error': 'Learning goal not found'}), 404
-            
-            db.session.delete(goal)
-            db.session.commit()
-            
-            return jsonify({
-                'message': 'Learning goal deleted successfully'
+                'daily_study': [
+                    {'date': log.date.isoformat(), 'hours': float(log.total_hours or 0)}
+                    for log in daily_study
+                ],
+                'weekly_average': round(float(weekly_avg), 2),
+                'category_breakdown': [
+                    {'category': cat.category or 'Uncategorized', 'hours': float(cat.total_hours or 0)}
+                    for cat in category_breakdown
+                ],
+                'goals_progress': [
+                    {
+                        'title': goal.title,
+                        'progress': goal.calculate_progress(),
+                        'status': goal.status
+                    }
+                    for goal in goals_progress
+                ]
             }), 200
             
         except Exception as e:
