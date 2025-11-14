@@ -3,7 +3,7 @@ import jwt
 import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.user import User
-from models import db
+from models.db import db
 from config import Config
 
 class AuthController:
@@ -38,7 +38,7 @@ class AuthController:
             db.session.add(user)
             db.session.commit()
             
-            # Generate token after user is created (has an ID)
+            # Generate token
             token = AuthController.generate_token(user.id)
             
             return jsonify({
@@ -109,6 +109,12 @@ class AuthController:
                 'iat': datetime.datetime.utcnow(),
                 'sub': user_id
             }
-            return jwt.encode(payload, Config.SECRET_KEY, algorithm=Config.JWT_ALGORITHM)
+            token = jwt.encode(payload, Config.SECRET_KEY, algorithm=Config.JWT_ALGORITHM)
+            
+            # Ensure token is a string
+            if isinstance(token, bytes):
+                token = token.decode('utf-8')
+            
+            return token
         except Exception as e:
             raise Exception(f"Token generation failed: {str(e)}")

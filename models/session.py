@@ -1,4 +1,4 @@
-from .db import db
+from .. import db
 from datetime import datetime
 
 class Session(db.Model):
@@ -18,9 +18,6 @@ class Session(db.Model):
     ai_summary = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    study_logs = db.relationship('StudyLog', backref='session', lazy=True, cascade='all, delete-orphan')
     
     def to_dict(self):
         return {

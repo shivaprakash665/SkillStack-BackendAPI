@@ -1,4 +1,4 @@
-from .db import db
+from .. import db
 from datetime import datetime, date
 
 class StudyLog(db.Model):

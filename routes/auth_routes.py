@@ -12,14 +12,10 @@ def register():
 def login():
     return AuthController.login()
 
-@auth_bp.route('/verify', methods=['POST'])
-def verify_token():
-    return AuthController.verify_token()
-
-@auth_bp.route('/protected', methods=['GET'])
+@auth_bp.route('/verify', methods=['GET', 'POST'])  # Allow both GET and POST
 @token_required
-def protected_route(current_user):
-    return {
-        'message': f'Hello {current_user.name}! This is a protected route.',
+def verify_token(current_user):
+    return jsonify({
+        'message': 'Token is valid',
         'user': current_user.to_dict()
-    }
+    }), 200
