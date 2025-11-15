@@ -62,7 +62,6 @@ class LearningGoalController:
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
-    # FIXED: correct parameter order + correct indentation
     @staticmethod
     def get_learning_goal(user_id, goal_id):
         try:
@@ -76,6 +75,39 @@ class LearningGoalController:
             }), 200
 
         except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @staticmethod
+    def complete_learning_goal(user_id, goal_id):
+        try:
+            goal = LearningGoal.query.filter_by(id=goal_id, user_id=user_id).first()
+            
+            if not goal:
+                return jsonify({'error': 'Learning goal not found'}), 404
+            
+            # Mark goal as completed
+            goal.status = 'completed'
+            goal.actual_end_date = datetime.utcnow()
+            goal.updated_at = datetime.utcnow()
+            
+            # Also mark all sessions as completed
+            for session in goal.sessions:
+                if session.status != 'completed':
+                    session.status = 'completed'
+                    session.time_completed = datetime.utcnow()
+                    if session.time_started and not session.total_time_spent:
+                        diff = session.time_completed - session.time_started
+                        session.total_time_spent = round(diff.total_seconds() / 3600, 2)
+            
+            db.session.commit()
+            
+            return jsonify({
+                'message': 'Learning goal marked as completed',
+                'learning_goal': goal.to_dict()
+            }), 200
+
+        except Exception as e:
+            db.session.rollback()
             return jsonify({'error': str(e)}), 500
 
     @staticmethod

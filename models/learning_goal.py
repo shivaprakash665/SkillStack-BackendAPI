@@ -56,3 +56,23 @@ class LearningGoal(db.Model):
             return 0
         completed_sessions = len([s for s in self.sessions if s.status == 'completed'])
         return round((completed_sessions / len(self.sessions)) * 100, 2)
+    
+    def update_status_based_on_sessions(self):
+        """Update goal status based on session progress"""
+        if not self.sessions:
+            self.status = 'not_started'
+            return
+            
+        total_sessions = len(self.sessions)
+        completed_sessions = len([s for s in self.sessions if s.status == 'completed'])
+        in_progress_sessions = len([s for s in self.sessions if s.status == 'in_progress'])
+        
+        if completed_sessions == total_sessions:
+            self.status = 'completed'
+            self.actual_end_date = datetime.utcnow()
+        elif in_progress_sessions > 0 or completed_sessions > 0:
+            self.status = 'in_progress'
+        else:
+            self.status = 'not_started'
+        
+        self.updated_at = datetime.utcnow()

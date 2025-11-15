@@ -8,21 +8,20 @@ class Session(db.Model):
     learning_goal_id = db.Column(db.Integer, db.ForeignKey('learning_goals.id'), nullable=False)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
-    status = db.Column(db.String(20), default='not_started')  # not_started, in_progress, completed
+    status = db.Column(db.String(20), default='not_started')
     estimated_hours = db.Column(db.Float, default=0)
     actual_hours = db.Column(db.Float, default=0)
     order_index = db.Column(db.Integer, default=0)
     start_date = db.Column(db.DateTime)
     end_date = db.Column(db.DateTime)
-    notes = db.Column(db.Text)
-    ai_summary = db.Column(db.Text)
+    notes = db.Column(db.Text)  # User notes
+    ai_summary = db.Column(db.Text)  # AI generated summary
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    # Add time tracking fields
-    time_added = db.Column(db.DateTime, default=datetime.utcnow)  # When subtopic was added
-    time_started = db.Column(db.DateTime)  # When moved to in_progress
-    time_completed = db.Column(db.DateTime)  # When moved to completed
-    total_time_spent = db.Column(db.Float, default=0)  # In hours
+    time_added = db.Column(db.DateTime, default=datetime.utcnow)
+    time_started = db.Column(db.DateTime)
+    time_completed = db.Column(db.DateTime)
+    total_time_spent = db.Column(db.Float, default=0)
     
     def to_dict(self):
         return {

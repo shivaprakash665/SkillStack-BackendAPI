@@ -39,6 +39,7 @@ class SessionController:
             }), 201
             
         except Exception as e:
+            db.session.rollback()
             return jsonify({'error': str(e)}), 500
 
     @staticmethod
@@ -94,6 +95,10 @@ class SessionController:
                 session.notes = data["notes"]
 
             session.updated_at = datetime.utcnow()
+            
+            # Update the parent learning goal status
+            session.learning_goal.update_status_based_on_sessions()
+            
             db.session.commit()
 
             return jsonify({
@@ -102,6 +107,7 @@ class SessionController:
             }), 200
 
         except Exception as e:
+            db.session.rollback()
             return jsonify({'error': str(e)}), 500
 
     @staticmethod
@@ -157,3 +163,34 @@ class SessionController:
 
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+        
+        @staticmethod
+        def update_session_notes(user_id, session_id):
+            try:
+                session = Session.query.join(LearningGoal).filter(
+                    Session.id == session_id,
+                    LearningGoal.user_id == user_id
+                ).first()
+                
+                if not session:
+                    return jsonify({'error': 'Session not found'}), 404
+                
+                data = request.get_json()
+                
+                if "notes" in data:
+                    session.notes = data["notes"]
+                
+                if "ai_summary" in data:
+                    session.ai_summary = data["ai_summary"]
+                
+                session.updated_at = datetime.utcnow()
+                db.session.commit()
+
+                return jsonify({
+                    "message": "Session notes updated successfully",
+                    "session": session.to_dict()
+                }), 200
+
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({'error': str(e)}), 500

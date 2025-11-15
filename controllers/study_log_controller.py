@@ -9,7 +9,6 @@ from sqlalchemy import func
 class StudyLogController:
     
     @staticmethod
-    @token_required
     def log_study_time(current_user):
         try:
             data = request.get_json()
@@ -54,7 +53,6 @@ class StudyLogController:
             return jsonify({'error': str(e)}), 500
     
     @staticmethod
-    @token_required
     def get_study_analytics(current_user):
         try:
             # Daily study time for last 7 days
