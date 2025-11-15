@@ -279,4 +279,14 @@ Category-based progress analysis
 
 Interactive charts and visualizations
 
+<img width="1919" height="979" alt="Screenshot 2025-11-15 191135" src="https://github.com/user-attachments/assets/a760ca4c-5546-4eeb-a959-97c98fbd6802" />
 
+
+
+<img width="1915" height="975" alt="Screenshot 2025-11-15 202037" src="https://github.com/user-attachments/assets/c8992bf3-8f49-40fc-9b36-549ced720304" />
+
+
+
+<img width="1919" height="944" alt="Screenshot 2025-11-15 202059" src="https://github.com/user-attachments/assets/81460cf1-63ee-47db-9370-0ac108e5692f" />
+
+<img width="1919" height="913" alt="Screenshot 2025-11-15 202451" src="https://github.com/user-attachments/assets/4faf60e1-dd9b-4a8f-870b-479289bba7bc" />
