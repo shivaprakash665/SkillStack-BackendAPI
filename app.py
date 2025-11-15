@@ -5,6 +5,10 @@ from models.db import db
 from routes.auth_routes import auth_bp
 from routes.learning_routes import learning_bp
 import os
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -20,9 +24,19 @@ os.makedirs('uploads/certificates', exist_ok=True)
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(learning_bp, url_prefix='/api/learning')
 
+# Error handler for debugging
+@app.errorhandler(500)
+def handle_500_error(error):
+    app.logger.error(f"500 Error: {str(error)}")
+    return jsonify({'error': 'Internal server error'}), 500
+
 # Create tables
 with app.app_context():
-    db.create_all()
+    try:
+        db.create_all()
+        print("Database tables created successfully")
+    except Exception as e:
+        print(f"Error creating tables: {e}")
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5000)

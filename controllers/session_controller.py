@@ -2,27 +2,24 @@ from flask import request, jsonify
 from models.learning_goal import LearningGoal
 from models.session import Session
 from models import db
-from middleware.auth_middleware import token_required
-from datetime import datetime, timedelta
+from datetime import datetime
 
 class SessionController:
     
     @staticmethod
-    @token_required
-    def create_session(current_user, goal_id):
+    def create_session(user_id, goal_id):
         try:
-            # Verify learning goal belongs to user
-            goal = LearningGoal.query.filter_by(id=goal_id, user_id=current_user.id).first()
+            goal = LearningGoal.query.filter_by(id=goal_id, user_id=user_id).first()
             if not goal:
                 return jsonify({'error': 'Learning goal not found'}), 404
             
             data = request.get_json()
-            
             if not data.get('title'):
                 return jsonify({'error': 'Title is required'}), 400
             
-            # Get the highest order index for this goal
-            max_order = db.session.query(db.func.max(Session.order_index)).filter_by(learning_goal_id=goal_id).scalar() or 0
+            max_order = db.session.query(db.func.max(Session.order_index)).filter_by(
+                learning_goal_id=goal_id
+            ).scalar() or 0
             
             session = Session(
                 learning_goal_id=goal_id,
@@ -43,127 +40,120 @@ class SessionController:
             
         except Exception as e:
             return jsonify({'error': str(e)}), 500
-    
+
     @staticmethod
-    @token_required
-    def get_sessions(current_user, goal_id):
+    def get_sessions(user_id, goal_id):
         try:
-            # Verify learning goal belongs to user
-            goal = LearningGoal.query.filter_by(id=goal_id, user_id=current_user.id).first()
+            goal = LearningGoal.query.filter_by(id=goal_id, user_id=user_id).first()
             if not goal:
                 return jsonify({'error': 'Learning goal not found'}), 404
             
-            sessions = Session.query.filter_by(learning_goal_id=goal_id).order_by(Session.order_index).all()
+            sessions = Session.query.filter_by(
+                learning_goal_id=goal_id
+            ).order_by(Session.order_index).all()
+            
             return jsonify({
-                'sessions': [session.to_dict() for session in sessions]
+                'sessions': [s.to_dict() for s in sessions]
             }), 200
+
         except Exception as e:
             return jsonify({'error': str(e)}), 500
-    
+
     @staticmethod
-    @token_required
-    def update_session_status(current_user, session_id):
+    def update_session_status(user_id, session_id):
         try:
             session = Session.query.join(LearningGoal).filter(
                 Session.id == session_id,
-                LearningGoal.user_id == current_user.id
+                LearningGoal.user_id == user_id
             ).first()
             
             if not session:
                 return jsonify({'error': 'Session not found'}), 404
             
             data = request.get_json()
+            old_status = session.status
             
-            if 'status' in data:
-                new_status = data['status']
-                old_status = session.status
+            if "status" in data:
+                new_status = data["status"]
                 
-                # Update timestamps based on status changes
-                if new_status == 'in_progress' and old_status != 'in_progress':
+                if new_status == "in_progress" and old_status != "in_progress":
                     session.time_started = datetime.utcnow()
-                elif new_status == 'completed' and old_status != 'completed':
+                
+                if new_status == "completed" and old_status != "completed":
                     session.time_completed = datetime.utcnow()
-                    # Calculate total time spent if started time exists
                     if session.time_started:
-                        time_diff = session.time_completed - session.time_started
-                        session.total_time_spent = round(time_diff.total_seconds() / 3600, 2)  # Convert to hours
+                        diff = session.time_completed - session.time_started
+                        session.total_time_spent = round(diff.total_seconds() / 3600, 2)
                 
                 session.status = new_status
             
-            if 'actual_hours' in data:
-                session.actual_hours = data['actual_hours']
+            if "actual_hours" in data:
+                session.actual_hours = data["actual_hours"]
             
-            if 'notes' in data:
-                session.notes = data['notes']
-            
+            if "notes" in data:
+                session.notes = data["notes"]
+
             session.updated_at = datetime.utcnow()
             db.session.commit()
-            
+
             return jsonify({
-                'message': 'Session updated successfully',
-                'session': session.to_dict()
+                "message": "Session updated successfully",
+                "session": session.to_dict()
             }), 200
-            
+
         except Exception as e:
             return jsonify({'error': str(e)}), 500
-    
+
     @staticmethod
-    @token_required
-    def update_session_order(current_user, session_id):
+    def update_session_order(user_id, session_id):
         try:
             session = Session.query.join(LearningGoal).filter(
                 Session.id == session_id,
-                LearningGoal.user_id == current_user.id
+                LearningGoal.user_id == user_id
             ).first()
             
             if not session:
                 return jsonify({'error': 'Session not found'}), 404
             
             data = request.get_json()
-            
-            if 'order_index' in data:
-                session.order_index = data['order_index']
+            if "order_index" in data:
+                session.order_index = data["order_index"]
             
             session.updated_at = datetime.utcnow()
             db.session.commit()
-            
+
             return jsonify({
-                'message': 'Session order updated successfully',
-                'session': session.to_dict()
+                "message": "Session order updated successfully",
+                "session": session.to_dict()
             }), 200
-            
+
         except Exception as e:
             return jsonify({'error': str(e)}), 500
-    
+
     @staticmethod
-    @token_required
-    def get_session_analytics(current_user, goal_id):
+    def get_session_analytics(user_id, goal_id):
         try:
-            # Verify learning goal belongs to user
-            goal = LearningGoal.query.filter_by(id=goal_id, user_id=current_user.id).first()
+            goal = LearningGoal.query.filter_by(id=goal_id, user_id=user_id).first()
             if not goal:
                 return jsonify({'error': 'Learning goal not found'}), 404
             
             sessions = Session.query.filter_by(learning_goal_id=goal_id).all()
-            
-            total_sessions = len(sessions)
-            completed_sessions = len([s for s in sessions if s.status == 'completed'])
-            in_progress_sessions = len([s for s in sessions if s.status == 'in_progress'])
-            not_started_sessions = len([s for s in sessions if s.status == 'not_started'])
-            
-            # Calculate time statistics
-            total_time_spent = sum(s.total_time_spent for s in sessions if s.total_time_spent)
-            avg_time_per_session = total_time_spent / completed_sessions if completed_sessions > 0 else 0
-            
+
+            total = len(sessions)
+            completed = len([s for s in sessions if s.status == 'completed'])
+            in_progress = len([s for s in sessions if s.status == 'in_progress'])
+            not_started = len([s for s in sessions if s.status == 'not_started'])
+            total_time = sum(s.total_time_spent for s in sessions if s.total_time_spent)
+
             return jsonify({
-                'total_sessions': total_sessions,
-                'completed_sessions': completed_sessions,
-                'in_progress_sessions': in_progress_sessions,
-                'not_started_sessions': not_started_sessions,
-                'completion_percentage': round((completed_sessions / total_sessions) * 100, 2) if total_sessions > 0 else 0,
-                'total_time_spent': round(total_time_spent, 2),
-                'average_time_per_session': round(avg_time_per_session, 2)
+                "total_sessions": total,
+                "completed_sessions": completed,
+                "in_progress_sessions": in_progress,
+                "not_started_sessions": not_started,
+                "completion_percentage": round((completed / total) * 100, 2) if total > 0 else 0,
+                "total_time_spent": round(total_time, 2),
+                "average_time_per_session": round(total_time / completed, 2) if completed > 0 else 0
             }), 200
-            
+
         except Exception as e:
             return jsonify({'error': str(e)}), 500

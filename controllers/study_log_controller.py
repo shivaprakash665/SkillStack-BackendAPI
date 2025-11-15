@@ -3,7 +3,6 @@ from models.study_log import StudyLog
 from models.learning_goal import LearningGoal
 from models.session import Session
 from models import db
-from middleware.auth_middleware import token_required
 from datetime import datetime, date, timedelta
 from sqlalchemy import func
 

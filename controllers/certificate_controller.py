@@ -2,10 +2,9 @@ from flask import request, jsonify
 from models.certificate import Certificate
 from models.learning_goal import LearningGoal
 from models import db
-from middleware.auth_middleware import token_required
-from datetime import datetime
 import os
 from werkzeug.utils import secure_filename
+from datetime import datetime
 
 class CertificateController:
     
@@ -18,8 +17,7 @@ class CertificateController:
                filename.rsplit('.', 1)[1].lower() in CertificateController.ALLOWED_EXTENSIONS
     
     @staticmethod
-    @token_required
-    def upload_certificate(current_user):
+    def upload_certificate(user_id):
         try:
             if 'file' not in request.files:
                 return jsonify({'error': 'No file provided'}), 400
@@ -36,7 +34,7 @@ class CertificateController:
                 return jsonify({'error': 'Learning goal ID is required'}), 400
             
             # Verify learning goal belongs to user
-            goal = LearningGoal.query.filter_by(id=learning_goal_id, user_id=current_user.id).first()
+            goal = LearningGoal.query.filter_by(id=learning_goal_id, user_id=user_id).first()
             if not goal:
                 return jsonify({'error': 'Learning goal not found'}), 404
             
@@ -45,12 +43,12 @@ class CertificateController:
             
             # Save file
             filename = secure_filename(file.filename)
-            unique_filename = f"{current_user.id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{filename}"
+            unique_filename = f"{user_id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}_{filename}"
             file_path = os.path.join(CertificateController.UPLOAD_FOLDER, unique_filename)
             file.save(file_path)
             
             certificate = Certificate(
-                user_id=current_user.id,
+                user_id=user_id,
                 learning_goal_id=learning_goal_id,
                 name=request.form.get('name', filename),
                 file_url=f"/{file_path}",
@@ -69,13 +67,13 @@ class CertificateController:
             }), 201
             
         except Exception as e:
+            db.session.rollback()
             return jsonify({'error': str(e)}), 500
     
     @staticmethod
-    @token_required
-    def get_certificates(current_user):
+    def get_certificates(user_id):
         try:
-            certificates = Certificate.query.filter_by(user_id=current_user.id).all()
+            certificates = Certificate.query.filter_by(user_id=user_id).all()
             return jsonify({
                 'certificates': [cert.to_dict() for cert in certificates]
             }), 200
