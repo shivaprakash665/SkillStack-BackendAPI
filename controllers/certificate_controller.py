@@ -36,7 +36,7 @@ class CertificateController:
             # Verify learning goal belongs to user
             goal = LearningGoal.query.filter_by(id=learning_goal_id, user_id=user_id).first()
             if not goal:
-                return jsonify({'error': 'Learning goal not found'}), 404
+                return jsonify({'error': 'Learning goal not found or access denied'}), 404
             
             # Create upload directory if not exists
             os.makedirs(CertificateController.UPLOAD_FOLDER, exist_ok=True)

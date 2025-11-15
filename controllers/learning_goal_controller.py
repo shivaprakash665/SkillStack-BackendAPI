@@ -165,3 +165,19 @@ class LearningGoalController:
 
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+        
+    @staticmethod
+    def delete_learning_goal(user_id, goal_id):
+        try:
+            goal = LearningGoal.query.filter_by(id=goal_id, user_id=user_id).first()
+            if not goal:
+                return jsonify({'error': 'Learning goal not found'}), 404
+            
+            db.session.delete(goal)
+            db.session.commit()
+            
+            return jsonify({'message': 'Learning goal deleted successfully'}), 200
+            
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'error': str(e)}), 500
